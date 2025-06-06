@@ -18,48 +18,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Cache Rust dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo
-            ./anchor/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('anchor/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Cache Node.js dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install Rust toolchain
+      - name: Install latest nightly Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2025-06-06
-          components: rustfmt, clippy
+          # 我们需要最新的 nightly 来尝试直接解析 v4 lockfile
+          toolchain: nightly
 
       - name: Install Solana from a Confirmed GitHub Release
         run: |
           SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
-          echo "Downloading Solana from: $SOLANA_RELEASE_URL"
           wget $SOLANA_RELEASE_URL
           tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
-
-      - name: Install Anchor
+        
+      - name: Install latest Anchor
         run: |
-          cargo install --git https://github.com/coral-xyz/anchor avm --locked --tag v0.31.1
-          avm install 0.31.1
-          avm use 0.31.1
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked
+          avm install latest
+          avm use latest
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
       - name: Verify Tools Installation
@@ -67,20 +48,13 @@ jobs:
           solana --version
           anchor --version
           rustc --version
-          cargo --version
-          cargo build-sbf --version
 
       - name: Install Node.js dependencies
         run: npm install
 
-      - name: Regenerate Cargo.lock to match CI environment
-        run: |
-          rm -f Cargo.lock
-          cargo generate-lockfile -Znext-lockfile-bump
-        working-directory: ./anchor
-
       - name: Build Anchor program
-        run: anchor build -- -- -Znext-lockfile-bump
+        # 终极修复：不再重新生成 lock 文件，直接让最新的 nightly 工具链尝试构建
+        run: anchor build
         working-directory: ./anchor
 
       - name: Run Anchor tests
@@ -96,59 +70,30 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Cache Rust dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo
-            ./anchor/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('anchor/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      - name: Cache Node.js dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Install Rust toolchain
+      - name: Install latest nightly Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2025-06-06
-          components: rustfmt, clippy
-
+          toolchain: nightly
       - name: Install Solana from a Confirmed GitHub Release
         run: |
           SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
           wget $SOLANA_RELEASE_URL
           tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
-
-      - name: Install Anchor
+      - name: Install latest Anchor
         run: |
-          cargo install --git https://github.com/coral-xyz/anchor avm --locked --tag v0.31.1
-          avm install 0.31.1
-          avm use 0.31.1
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked
+          avm install latest
+          avm use latest
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
-
-      - name: Regenerate Cargo.lock to match CI environment
-        working-directory: ./anchor
-        run: |
-          rm -f Cargo.lock
-          cargo generate-lockfile -Znext-lockfile-bump
 
       - name: Set up Devnet wallet
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
-
+      
       - name: Deploy to Devnet
         run: anchor deploy
         working-directory: ./anchor
