@@ -27,8 +27,8 @@ jobs:
         run: |
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
             echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-            rustup install nightly-2024-06-10
-            rustup override set nightly-2024-06-10
+            rustup install nightly
+            rustup override set nightly
 
       - name: Install Solana from a Confirmed GitHub Release
         run: |
@@ -54,11 +54,11 @@ jobs:
         run: npm install
 
       - name: Build Anchor program
-        run: cargo +nightly-2024-06-10 build -Znext-lockfile
+        run: cargo +nightly build -Znext-lockfile
         working-directory: ./anchor
 
       - name: Run Anchor tests
-        run: cargo +nightly-2024-06-10 test -Znext-lockfile
+        run: cargo +nightly test -Znext-lockfile
         working-directory: ./anchor
 
   deploy-to-devnet:
