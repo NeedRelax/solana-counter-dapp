@@ -12,7 +12,6 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     env:
-      # 关键修复：硬编码一个具体的、已知的稳定版本号
       SOLANA_VERSION: "1.18.15"
 
     steps:
@@ -31,20 +30,16 @@ jobs:
 
       - name: Install Solana from GitHub Releases
         run: |
-          # 现在 SOLANA_VERSION 是一个具体的版本号，URL 构造会是正确的
           SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
-          
           echo "Downloading Solana from: $SOLANA_RELEASE_URL"
           wget $SOLANA_RELEASE_URL
           tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
-          
           echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
         
       - name: Install Anchor
         run: |
-          # 固定 Anchor 版本以提高稳定性
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
-          avm install 0.29.0 # 固定一个已知兼容的版本
+          avm install 0.29.0
           avm use 0.29.0
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
@@ -56,6 +51,23 @@ jobs:
       - name: Install Node.js dependencies
         run: npm install
 
+      # --- 关键的诊断步骤 ---
+      - name: Diagnose Workspace
+        run: |
+          echo "--- Current Working Directory ---"
+          pwd
+          echo "--- Listing Files and Directories (Root) ---"
+          ls -la
+          echo "--- Checking for Anchor.toml ---"
+          if [ -f "Anchor.toml" ]; then
+            echo "Anchor.toml found in root directory."
+          else
+            echo "Anchor.toml NOT found in root directory."
+          fi
+          # 如果你怀疑它在子目录，可以取消下面这行的注释
+          # echo "--- Listing Files in 'anchor' subdirectory ---"
+          # ls -la ./anchor
+      
       - name: Build Anchor program
         run: anchor build
 
