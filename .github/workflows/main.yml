@@ -23,12 +23,13 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Manually Install a specific nightly Rust toolchain
+      - name: Manually Install a very recent nightly Rust toolchain
+        # 终极修复：使用一个确认在 LazyLock 稳定化之后的 nightly 版本
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          rustup install nightly-2024-05-15
-          rustup default nightly-2024-05-15
+          rustup install nightly-2024-06-10
+          rustup default nightly-2024-06-10
 
       - name: Install Solana from a Confirmed GitHub Release
         run: |
@@ -74,12 +75,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Manually Install a specific nightly Rust toolchain
+      - name: Manually Install a very recent nightly Rust toolchain
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          rustup install nightly-2024-05-15
-          rustup default nightly-2024-05-15
+          rustup install nightly-2024-06-10
+          rustup default nightly-2024-06-10
       - name: Install Solana from a Confirmed GitHub Release
         run: |
           SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
