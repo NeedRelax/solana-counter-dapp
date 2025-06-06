@@ -13,15 +13,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # 使用最新的 v4 版本
 
-      # 使用这个 Action 一步到位安装 Solana, Rust, 和 Anchor
-      - name: Setup Anchor environment
-        uses: armada-alliance/anchor-actions@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          anchor-version: 'latest' # 你可以指定版本，例如 '0.29.0'
-          solana-version: 'latest'
           node-version: '18'
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install Solana
+        uses: solana-labs/setup-solana@v1
+        with:
+          solana-version: 'latest'
+
+      - name: Install Anchor
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked
+          avm install latest
+          avm use latest
+
+      - name: Add Anchor to PATH
+        # 这是关键一步，avm 安装的 anchor 不在默认路径中
+        run: echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
       - name: Install Node.js dependencies
         run: npm install
@@ -38,16 +55,32 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 同样使用这个 Action 来准备部署环境
-      - name: Setup Anchor environment
-        uses: armada-alliance/anchor-actions@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          anchor-version: 'latest'
-          solana-version: 'latest'
           node-version: '18'
 
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install Solana
+        uses: solana-labs/setup-solana@v1
+        with:
+          solana-version: 'latest'
+
+      - name: Install Anchor
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked
+          avm install latest
+          avm use latest
+
+      - name: Add Anchor to PATH
+        run: echo "$HOME/.avm/bin" >> $GITHUB_PATH
+        
       - name: Set up Devnet wallet
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
 
