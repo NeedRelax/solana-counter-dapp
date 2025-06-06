@@ -24,10 +24,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install latest nightly Rust toolchain
+      - name: Install Rust toolchain with rustup
+        # 此步骤安装 rustup，这是后续步骤的基础
         uses: dtolnay/rust-toolchain@stable
         with:
-          # 使用最新的 nightly 工具链，以确保兼容最新的 Cargo.lock 格式和 Rust 语言特性
           toolchain: nightly
 
       - name: Install Solana from GitHub Releases
@@ -55,13 +55,20 @@ jobs:
         # 在项目根目录运行，因为 package.json 在这里
         run: npm install
 
+      - name: Force specific Rust toolchain for Anchor workspace
+        # 终极修复：在 Anchor 工作区内创建 rust-toolchain.toml 文件
+        # 这会强制 anchor build 使用我们指定的 nightly 版本，覆盖任何其他设置
+        run: |
+          echo '[toolchain]' > anchor/rust-toolchain.toml
+          echo 'channel = "nightly"' >> anchor/rust-toolchain.toml
+          echo "Created anchor/rust-toolchain.toml with content:"
+          cat anchor/rust-toolchain.toml
+
       - name: Build Anchor program
-        # 在 'anchor' 子目录中运行，并且相信最新的 nightly 工具链能处理现有的 Cargo.lock
         run: anchor build
         working-directory: ./anchor
 
       - name: Run Anchor tests
-        # 在 'anchor' 子目录中运行
         run: anchor test
         working-directory: ./anchor
 
@@ -75,35 +82,35 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Install latest nightly Rust toolchain
+      - name: Install Rust toolchain with rustup
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-
       - name: Install Solana from GitHub Releases
         run: |
           SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
           wget $SOLANA_RELEASE_URL
           tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
-
       - name: Install Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
           avm install 0.29.0
           avm use 0.29.0
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
-        
+      
+      - name: Force specific Rust toolchain for Anchor workspace
+        run: |
+          echo '[toolchain]' > anchor/rust-toolchain.toml
+          echo 'channel = "nightly"' >> anchor/rust-toolchain.toml
+
       - name: Set up Devnet wallet
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
-
+      
       - name: Deploy to Devnet
-        # 在 'anchor' 子目录中运行
         run: anchor deploy
         working-directory: ./anchor
