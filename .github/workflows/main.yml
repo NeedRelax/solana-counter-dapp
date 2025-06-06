@@ -12,16 +12,12 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     env:
+      # 固定 Solana 版本以保证 CI 的稳定性
       SOLANA_VERSION: "1.18.15"
-      # 定义项目子目录的变量，如果你的仓库根目录下的文件夹名不同，只需修改这里
-      PROJECT_DIR: ./solana-counter-dapp
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        # 将代码检出到指定的子目录中，以匹配本地结构
-        with:
-          path: ${{ env.PROJECT_DIR }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -43,6 +39,7 @@ jobs:
       - name: Install Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
+          # 固定 Anchor 版本以匹配 Solana 版本并保证稳定性
           avm install 0.29.0
           avm use 0.29.0
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
@@ -53,19 +50,18 @@ jobs:
           anchor --version
 
       - name: Install Node.js dependencies
-        # 关键修复：在正确的项目子目录中运行 npm install
+        # 在项目根目录运行，因为 package.json 在这里
         run: npm install
-        working-directory: ${{ env.PROJECT_DIR }}
 
       - name: Build Anchor program
-        # 关键修复：在正确的项目子目录中运行 anchor build
+        # 关键修复：在 'anchor' 子目录中运行
         run: anchor build
-        working-directory: ${{ env.PROJECT_DIR }}
+        working-directory: ./anchor
 
       - name: Run Anchor tests
-        # 关键修复：在正确的项目子目录中运行 anchor test
+        # 关键修复：在 'anchor' 子目录中运行
         run: anchor test
-        working-directory: ${{ env.PROJECT_DIR }}
+        working-directory: ./anchor
 
   deploy-to-devnet:
     runs-on: ubuntu-latest
@@ -73,13 +69,10 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     env:
       SOLANA_VERSION: "1.18.15"
-      PROJECT_DIR: ./solana-counter-dapp
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          path: ${{ env.PROJECT_DIR }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -93,7 +86,6 @@ jobs:
 
       - name: Install Solana from GitHub Releases
         run: |
-          # ... (和上面一样)
           SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
           wget $SOLANA_RELEASE_URL
           tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
@@ -101,7 +93,6 @@ jobs:
 
       - name: Install Anchor
         run: |
-          # ... (和上面一样)
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
           avm install 0.29.0
           avm use 0.29.0
@@ -111,6 +102,6 @@ jobs:
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
 
       - name: Deploy to Devnet
-        # 关键修复：在正确的项目子目录中运行 anchor deploy
+        # 关键修复：在 'anchor' 子目录中运行
         run: anchor deploy
-        working-directory: ${{ env.PROJECT_DIR }}
+        working-directory: ./anchor
