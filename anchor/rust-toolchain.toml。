@@ -1,0 +1,5 @@
+# solana-counter-dapp/anchor/rust-toolchain.toml
+
+[toolchain]
+channel = "nightly-2024-06-10"
+components = ["rust-src"] # 可选，但通常对 Anchor/Solana 开发有益
