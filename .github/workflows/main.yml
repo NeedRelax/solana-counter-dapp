@@ -82,7 +82,7 @@ jobs:
         working-directory: ./anchor
 
       - name: Run Anchor tests
-        4un: anchor test
+        run: anchor test
         working-directory: ./anchor
 
   deploy-to-devnet:
