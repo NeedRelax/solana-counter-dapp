@@ -18,7 +18,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          # 问题一的修复：将 Node.js 版本升级到 20
+          node-version: '20'
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -26,10 +27,8 @@ jobs:
           toolchain: stable
 
       - name: Install Solana CLI
-        # 使用 Solana 官方的安装脚本
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
-          # 将 Solana CLI 添加到 GitHub Actions 的路径中
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
         
       - name: Install Anchor
@@ -37,17 +36,18 @@ jobs:
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
           avm install latest
           avm use latest
-          # 将 Anchor (avm) 添加到路径
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
       - name: Install Node.js dependencies
         run: npm install
 
       - name: Build Anchor program
-        run: anchor build
+        # 问题二的修复：明确指定项目根目录
+        run: anchor build --project-root .
 
       - name: Run Anchor tests
-        run: anchor test
+        # 问题二的修复：明确指定项目根目录
+        run: anchor test --project-root .
 
   deploy-to-devnet:
     runs-on: ubuntu-latest
@@ -60,7 +60,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          # 问题一的修复：将 Node.js 版本升级到 20
+          node-version: '20'
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -85,4 +86,5 @@ jobs:
       - name: Deploy to Devnet
         run: |
           solana config set --url devnet
-          anchor deploy
+          # 问题二的修复：明确指定项目根目录
+          anchor deploy --project-root .
