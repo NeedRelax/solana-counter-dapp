@@ -45,7 +45,7 @@ jobs:
 
     - name: Install Solana CLI
       run: |
-        sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)" # 可以选择一个具体的稳定版本
+        sh -c "$(curl -sSfL https://release.solana.com/v1.18.17/install)" # 可以选择一个具体的稳定版本
         echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
         solana --version
 
