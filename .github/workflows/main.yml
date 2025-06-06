@@ -26,7 +26,8 @@ jobs:
           toolchain: stable
 
       - name: Set up Solana
-        uses: anza-xyz/setup-solana@v0.4.1
+        # --- FIX: Changed from anza-xyz to solana-labs ---
+        uses: solana-labs/setup-solana@v0.4.1
         with:
           # Pin a specific version for reproducible builds
           version: '1.18.17'
