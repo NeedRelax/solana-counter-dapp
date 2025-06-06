@@ -18,7 +18,6 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # 问题一的修复：将 Node.js 版本升级到 20
           node-version: '20'
 
       - name: Install Rust toolchain
@@ -39,15 +38,18 @@ jobs:
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
       - name: Install Node.js dependencies
+        # 注意：npm install 仍然在根目录执行，因为它需要根目录的 package.json
         run: npm install
 
       - name: Build Anchor program
-        # 问题二的修复：明确指定项目根目录
-        run: anchor build --project-root .
+        # 关键修复：指定工作目录为 anchor 子目录
+        run: anchor build
+        working-directory: ./anchor # <-- 如果你的目录名不同，请修改这里
 
       - name: Run Anchor tests
-        # 问题二的修复：明确指定项目根目录
-        run: anchor test --project-root .
+        # 关键修复：指定工作目录为 anchor 子目录
+        run: anchor test
+        working-directory: ./anchor # <-- 如果你的目录名不同，请修改这里
 
   deploy-to-devnet:
     runs-on: ubuntu-latest
@@ -60,7 +62,6 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          # 问题一的修复：将 Node.js 版本升级到 20
           node-version: '20'
 
       - name: Install Rust toolchain
@@ -84,7 +85,6 @@ jobs:
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
 
       - name: Deploy to Devnet
-        run: |
-          solana config set --url devnet
-          # 问题二的修复：明确指定项目根目录
-          anchor deploy --project-root .
+        run: anchor deploy
+        # 关键修复：指定工作目录为 anchor 子目录
+        working-directory: ./anchor # <-- 如果你的目录名不同，请修改这里
