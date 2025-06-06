@@ -12,8 +12,8 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     env:
-      # 终极修复：硬编码一个在 GitHub Releases 上确认存在的、带有完整发布包的版本
-      SOLANA_VERSION: "1.18.19"
+      # 终极修复：硬编码一个我们已亲眼在 GitHub Releases 页面上确认存在的版本
+      SOLANA_VERSION: "1.18.17"
 
     steps:
       - name: Checkout code
@@ -29,11 +29,11 @@ jobs:
         with:
           toolchain: nightly
 
-      - name: Install Solana from GitHub Releases (Reliable Source)
-        # 我们从 GitHub 直接下载，绕过不稳定的 release.solana.com
+      - name: Install Solana from a Confirmed GitHub Release
+        # 我们从一个视觉上已确认存在文件的 GitHub Release 直接下载
         run: |
           SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
-          echo "Downloading Solana from confirmed URL: $SOLANA_RELEASE_URL"
+          echo "Downloading Solana from a visually confirmed URL: $SOLANA_RELEASE_URL"
           wget $SOLANA_RELEASE_URL
           tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
           echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
@@ -73,9 +73,8 @@ jobs:
     needs: build-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     env:
-      SOLANA_VERSION: "1.18.19" # 确保版本一致
+      SOLANA_VERSION: "1.18.17" # 确保版本一致
     steps:
-      # (此处省略 checkout, node, rust, solana, anchor, regenerate 的重复代码，请确保它们和上面 build-and-test 中的一致)
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Setup Node.js
@@ -86,7 +85,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-      - name: Install Solana from GitHub Releases (Reliable Source)
+      - name: Install Solana from a Confirmed GitHub Release
         run: |
           SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
           wget $SOLANA_RELEASE_URL
