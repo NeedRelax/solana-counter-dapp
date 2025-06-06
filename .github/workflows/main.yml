@@ -67,12 +67,14 @@ jobs:
           solana --version
           anchor --version
           rustc --version
+          cargo --version
+          cargo build-sbf --version
 
       - name: Install Node.js dependencies
         run: npm install
 
       - name: Regenerate Cargo.lock to match CI environment
-        working-directory: ./anchor
+        working packing-directory: ./anchor
         run: |
           rm -f Cargo.lock
           cargo generate-lockfile -Znext-lockfile-bump
