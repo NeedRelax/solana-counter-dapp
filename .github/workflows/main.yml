@@ -26,7 +26,8 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2025-06-01
+          toolchain: nightly-2025-06-05
+          components: rustfmt, clippy
 
       - name: Install Solana from a Confirmed GitHub Release
         run: |
@@ -59,7 +60,7 @@ jobs:
           cargo generate-lockfile -Znext-lockfile-bump
 
       - name: Build Anchor program
-        run: anchor build -- --locked -Znext-lockfile-bump
+        run: anchor build
         working-directory: ./anchor
 
       - name: Run Anchor tests
@@ -84,7 +85,8 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2025-06-01
+          toolchain: nightly-2025-06-05
+          components: rustfmt, clippy
 
       - name: Install Solana from a Confirmed GitHub Release
         run: |
@@ -96,7 +98,7 @@ jobs:
       - name: Install Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked --tag v0.31.1
-          avm installThe 0.31.1
+          avm install 0.31.1
           avm use 0.31.1
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
