@@ -26,11 +26,11 @@ jobs:
           toolchain: stable
 
       - name: Set up Solana
-        # --- FIX: Changed from anza-xyz to solana-labs ---
-        uses: solana-labs/setup-solana@v0.4.1
+        # --- FIX: Using the correct, community-maintained action ---
+        uses: michael-spengler/setup-solana@v1
         with:
-          # Pin a specific version for reproducible builds
-          version: '1.18.17'
+          # Note: The parameter name is 'solana-version', not 'version'
+          solana-version: '1.18.17'
 
       - name: Install Anchor CLI
         run: |
