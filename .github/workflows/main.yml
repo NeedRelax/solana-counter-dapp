@@ -74,10 +74,10 @@ jobs:
         run: npm install
 
       - name: Regenerate Cargo.lock to match CI environment
-        working packing-directory: ./anchor
         run: |
           rm -f Cargo.lock
           cargo generate-lockfile -Znext-lockfile-bump
+        working-directory: ./anchor
 
       - name: Build Anchor program
         run: anchor build -- -- -Znext-lockfile-bump
