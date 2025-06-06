@@ -23,14 +23,15 @@ jobs:
           toolchain: nightly
           components: rustfmt, clippy
 
-      - name: Install Solana CLI
+      - name: Install Solana CLI & SBF Toolchain
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/v1.17.20/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          rustup target add bpfel-unknown-unknown
+          cargo install --git https://github.com/solana-labs/solana --bin cargo-build-sbf
 
       - name: Install Anchor CLI
-        run: |
-          cargo install --git https://github.com/coral-xyz/anchor anchor-cli --locked
+        run: cargo install --git https://github.com/coral-xyz/anchor anchor-cli --locked
 
       - name: Build Anchor Program
         run: anchor build
