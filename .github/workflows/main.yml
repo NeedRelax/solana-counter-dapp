@@ -18,6 +18,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo
+            ./anchor/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('anchor/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -26,7 +44,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2025-06-05
+          toolchain: nightly-2025-06-06
           components: rustfmt, clippy
 
       - name: Install Solana from a Confirmed GitHub Release
@@ -60,11 +78,11 @@ jobs:
           cargo generate-lockfile -Znext-lockfile-bump
 
       - name: Build Anchor program
-        run: anchor build
+        run: anchor build -- -- -Znext-lockfile-bump
         working-directory: ./anchor
 
       - name: Run Anchor tests
-        run: anchor test
+        4un: anchor test
         working-directory: ./anchor
 
   deploy-to-devnet:
@@ -77,6 +95,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo
+            ./anchor/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('anchor/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Cache Node.js dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -85,7 +121,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly-2025-06-05
+          toolchain: nightly-2025-06-06
           components: rustfmt, clippy
 
       - name: Install Solana from a Confirmed GitHub Release
