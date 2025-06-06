@@ -11,10 +11,6 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    env:
-      # 我们将让官方脚本去处理版本，但可以留一个参考
-      # SOLANA_VERSION_REF: "2.0.1"
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,14 +25,15 @@ jobs:
         with:
           toolchain: nightly
 
-      - name: Install Solana using official robust script
-        # 终极修复：回归到最受支持的官方安装脚本，并添加重试逻辑
+      - name: Install latest STABLE Solana CLI and Build Tools
         run: |
+          # 回归官方安装脚本，并加入重试机制
           sh -c "$(curl --retry 5 --retry-delay 5 -sSfL https://release.solana.com/stable/install)"
+          # 将 Solana CLI 添加到路径
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          # 确保安装了构建工具
+          # 确保所有构建工具都被安装
           solana-install init $(solana-version --version | awk '{print $2}')
-
+        
       - name: Install latest Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
@@ -72,7 +69,6 @@ jobs:
     needs: build-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      # (checkout, node, rust)
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Setup Node.js
@@ -83,13 +79,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-
-      - name: Install Solana using official robust script
+      - name: Install latest STABLE Solana CLI and Build Tools
         run: |
           sh -c "$(curl --retry 5 --retry-delay 5 -sSfL https://release.solana.com/stable/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
           solana-install init $(solana-version --version | awk '{print $2}')
-
       - name: Install latest Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
@@ -102,7 +96,7 @@ jobs:
         run: |
           rm -f Cargo.lock
           cargo generate-lockfile
-
+          
       - name: Set up Devnet wallet
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
       
