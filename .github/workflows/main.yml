@@ -17,16 +17,16 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20' # 根据你的项目需求调整 Node.js 版本
+        node-version: '20'
         cache: 'npm'
 
     - name: Install npm dependencies
-      run: npm ci # 'npm ci' 更适合 CI 环境，确保使用 package-lock.json
+      run: npm ci
 
     - name: Setup Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: stable # 你可以选择 'stable', 'beta', 'nightly' 或特定版本
+        toolchain: stable
         components: rustfmt, clippy
         override: true
 
@@ -38,39 +38,35 @@ jobs:
           ~/.cargo/registry/index/
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
-          anchor/target/ # 缓存 Anchor 项目的构建输出 (注意路径是 anchor/target)
-        key: ${{ runner.os }}-cargo-${{ hashFiles('anchor/Cargo.lock') }} # 使用 anchor/Cargo.lock
+          anchor/target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('anchor/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
 
     - name: Install Solana CLI
-      uses: solana-labs/setup-solana@v1 # 使用官方 Action 安装 Solana CLI
+      # 尝试使用一个更具体的版本标签
+      uses: solana-labs/setup-solana@v1.3.0 # <--- 改动在这里，尝试一个具体的 tag
       with:
-        solana-version: '1.18.18' # 指定你希望安装的 Solana CLI 版本
-                                 # 你也可以尝试 'stable'
+        solana-version: '1.18.18'
 
     - name: Verify Solana CLI installation
       run: |
         solana --version
-        solana-keygen --version # 额外验证 keygen 也可用
+        solana-keygen --version
 
     - name: Install Anchor Version Manager (AVM) and Anchor CLI
       run: |
         cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-        avm install 0.31.1 # 安装与你的 anchor-lang = "0.31.1" 匹配的版本
+        avm install 0.31.1
         avm use 0.31.1
-        echo "$HOME/.avm/bin" >> $GITHUB_PATH # 将 avm 的 bin 目录添加到 PATH
+        echo "$HOME/.avm/bin" >> $GITHUB_PATH
         anchor --version
 
     - name: Build Anchor program (Rust)
-      # 根据 package.json, 这个脚本会 cd anchor && anchor build
       run: npm run anchor-build
 
     - name: Test Anchor program (Rust)
-      # 根据 package.json, 这个脚本会 cd anchor && anchor test
-      # Anchor test 可能会启动本地验证器，确保端口没有冲突
       run: npm run anchor-test
 
     - name: Run Frontend CI (Build, Lint, Format Check)
-      # 根据 package.json, 这个脚本会运行: npm run build && npm run lint && npm run format:check
       run: npm run ci
