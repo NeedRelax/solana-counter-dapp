@@ -25,12 +25,12 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Set up Solana
-        # --- FIX: Using the correct, community-maintained action ---
-        uses: michael-spengler/setup-solana@v1
-        with:
-          # Note: The parameter name is 'solana-version', not 'version'
-          solana-version: '1.18.17'
+      - name: Install Solana CLI
+        # --- FIX: Use the official install script, this is the most robust method ---
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.18.17/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          solana --version
 
       - name: Install Anchor CLI
         run: |
@@ -64,16 +64,13 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          # Use a recent LTS version
           node-version: '20.x'
-          # Use npm cache provided by setup-node
           cache: 'npm'
 
       # --------------------------------------------------
       # Step 4: Build and Test Frontend
       # --------------------------------------------------
       - name: Install Node.js dependencies
-        # 'npm ci' is recommended for CI for faster, more reliable installs
         run: npm ci
 
       - name: Lint frontend code
