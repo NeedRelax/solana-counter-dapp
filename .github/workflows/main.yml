@@ -24,12 +24,11 @@ jobs:
           node-version: '20'
 
       - name: Manually Install a very recent nightly Rust toolchain
-        # 终极修复：使用一个确认在 LazyLock 稳定化之后的 nightly 版本
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          rustup install nightly-2024-06-10
-          rustup default nightly-2024-06-10
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+            rustup install nightly-2024-06-10
+            rustup override set nightly-2024-06-10
 
       - name: Install Solana from a Confirmed GitHub Release
         run: |
@@ -55,11 +54,11 @@ jobs:
         run: npm install
 
       - name: Build Anchor program
-        run: anchor build -- -- -Znext-lockfile
+        run: cargo +nightly-2024-06-10 build -Znext-lockfile
         working-directory: ./anchor
 
       - name: Run Anchor tests
-        run: anchor test -- -- -Znext-lockfile
+        run: cargo +nightly-2024-06-10 test -Znext-lockfile
         working-directory: ./anchor
 
   deploy-to-devnet:
