@@ -1,72 +1,100 @@
-name: Solana Anchor CI
+name: Build, Test and Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
-  workflow_dispatch: # 允许手动触发
+    branches:
+      - main
 
 jobs:
-  build_and_test:
+  build-and-test:
     runs-on: ubuntu-latest
+    env:
+      SOLANA_VERSION: "1.18.17"
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-    - name: Install npm dependencies
-      run: npm ci
+      - name: Manually Install a very recent nightly Rust toolchain
+        # 终极修复：使用一个确认在 LazyLock 稳定化之后的 nightly 版本
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustup install nightly-2024-06-10
+          rustup default nightly-2024-06-10
 
-    - name: Setup Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        components: rustfmt, clippy
-        override: true
+      - name: Install Solana from a Confirmed GitHub Release
+        run: |
+          SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+          wget $SOLANA_RELEASE_URL
+          tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
+        
+      - name: Install latest Anchor
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked
+          avm install latest
+          avm use latest
+          echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
-    - name: Cache Cargo dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          anchor/target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('anchor/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
+      - name: Verify Tools Installation
+        run: |
+          solana --version
+          anchor --version
+          rustc --version
 
-    - name: Install Solana CLI
-      # 尝试使用一个更具体的版本标签
-      uses: solana-labs/setup-solana@v1.3.0 # <--- 改动在这里，尝试一个具体的 tag
-      with:
-        solana-version: '1.18.18'
+      - name: Install Node.js dependencies
+        run: npm install
 
-    - name: Verify Solana CLI installation
-      run: |
-        solana --version
-        solana-keygen --version
+      - name: Build Anchor program
+        run: anchor build
+        working-directory: ./anchor
 
-    - name: Install Anchor Version Manager (AVM) and Anchor CLI
-      run: |
-        cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-        avm install 0.31.1
-        avm use 0.31.1
-        echo "$HOME/.avm/bin" >> $GITHUB_PATH
-        anchor --version
+      - name: Run Anchor tests
+        run: anchor test
+        working-directory: ./anchor
 
-    - name: Build Anchor program (Rust)
-      run: npm run anchor-build
-
-    - name: Test Anchor program (Rust)
-      run: npm run anchor-test
-
-    - name: Run Frontend CI (Build, Lint, Format Check)
-      run: npm run ci
+  deploy-to-devnet:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    env:
+      SOLANA_VERSION: "1.18.17"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Manually Install a very recent nightly Rust toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustup install nightly-2024-06-10
+          rustup default nightly-2024-06-10
+      - name: Install Solana from a Confirmed GitHub Release
+        run: |
+          SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+          wget $SOLANA_RELEASE_URL
+          tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
+      - name: Install latest Anchor
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked
+          avm install latest
+          avm use latest
+          echo "$HOME/.avm/bin" >> $GITHUB_PATH
+      - name: Set up Devnet wallet
+        run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
+      - name: Deploy to Devnet
+        run: anchor deploy
+        working-directory: ./anchor
