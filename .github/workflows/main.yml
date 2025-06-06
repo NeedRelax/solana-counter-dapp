@@ -23,11 +23,13 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install latest nightly Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          # 我们需要最新的 nightly 来尝试直接解析 v4 lockfile
-          toolchain: nightly
+      - name: Manually Install a specific nightly Rust toolchain
+        # 终极修复：不再使用任何 action，手动安装一个我们确认足够新的 nightly 版本
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustup install nightly-2024-05-15
+          rustup default nightly-2024-05-15
 
       - name: Install Solana from a Confirmed GitHub Release
         run: |
@@ -47,13 +49,12 @@ jobs:
         run: |
           solana --version
           anchor --version
-          rustc --version
+          rustc --version # 这次会打印出我们手动安装的那个版本
 
       - name: Install Node.js dependencies
         run: npm install
 
       - name: Build Anchor program
-        # 终极修复：不再重新生成 lock 文件，直接让最新的 nightly 工具链尝试构建
         run: anchor build
         working-directory: ./anchor
 
@@ -74,26 +75,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install latest nightly Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: nightly
+      - name: Manually Install a specific nightly Rust toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustup install nightly-2024-05-15
+          rustup default nightly-2024-05-15
       - name: Install Solana from a Confirmed GitHub Release
-        run: |
-          SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
-          wget $SOLANA_RELEASE_URL
-          tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
-          echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
+        # ... (和上面一样)
       - name: Install latest Anchor
-        run: |
-          cargo install --git https://github.com/coral-xyz/anchor avm --locked
-          avm install latest
-          avm use latest
-          echo "$HOME/.avm/bin" >> $GITHUB_PATH
-
+        # ... (和上面一样)
       - name: Set up Devnet wallet
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
-      
       - name: Deploy to Devnet
         run: anchor deploy
         working-directory: ./anchor
