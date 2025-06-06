@@ -25,10 +25,11 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install Solana CLI
+      - name: Install Solana CLI and Build Tools
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          solana-install init $(solana-version --version | awk '{print $2}')
         
       - name: Install Anchor
         run: |
@@ -38,18 +39,13 @@ jobs:
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
       - name: Install Node.js dependencies
-        # 注意：npm install 仍然在根目录执行，因为它需要根目录的 package.json
         run: npm install
 
       - name: Build Anchor program
-        # 关键修复：指定工作目录为 anchor 子目录
         run: anchor build
-        working-directory: ./anchor # <-- 如果你的目录名不同，请修改这里
 
       - name: Run Anchor tests
-        # 关键修复：指定工作目录为 anchor 子目录
         run: anchor test
-        working-directory: ./anchor # <-- 如果你的目录名不同，请修改这里
 
   deploy-to-devnet:
     runs-on: ubuntu-latest
@@ -69,10 +65,11 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install Solana CLI
+      - name: Install Solana CLI and Build Tools
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          solana-install init $(solana-version --version | awk '{print $2}')
 
       - name: Install Anchor
         run: |
@@ -86,5 +83,3 @@ jobs:
 
       - name: Deploy to Devnet
         run: anchor deploy
-        # 关键修复：指定工作目录为 anchor 子目录
-        working-directory: ./anchor # <-- 如果你的目录名不同，请修改这里
