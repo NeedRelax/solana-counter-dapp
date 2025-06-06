@@ -11,6 +11,10 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      # 定义一个变量，方便统一修改 Solana 版本
+      SOLANA_VERSION: "stable" # 你可以换成具体的版本号，如 "1.18.15"
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,12 +29,20 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install Solana CLI and Build Tools
+      - name: Install Solana from GitHub Releases
+        # 备用方案：直接从 GitHub Releases 下载，绕过不稳定的 release.solana.com
         run: |
-          # 为 curl 添加重试逻辑，以应对临时的网络故障
-          sh -c "$(curl --retry 5 --retry-delay 5 -sSfL https://release.solana.com/stable/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          solana-install init $(solana-version --version | awk '{print $2}')
+          SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+          if [ "$SOLANA_VERSION" = "stable" ] || [ "$SOLANA_VERSION" = "latest" ]; then
+            SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/${SOLANA_VERSION}/download/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+          fi
+          
+          echo "Downloading Solana from: $SOLANA_RELEASE_URL"
+          wget $SOLANA_RELEASE_URL
+          tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          
+          # 将解压后的 Solana bin 目录添加到路径
+          echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
         
       - name: Install Anchor
         run: |
@@ -38,6 +50,11 @@ jobs:
           avm install latest
           avm use latest
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
+
+      - name: Verify Solana and Anchor Installation
+        run: |
+          solana --version
+          anchor --version
 
       - name: Install Node.js dependencies
         run: npm install
@@ -52,6 +69,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    env:
+      SOLANA_VERSION: "stable"
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -66,12 +86,18 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install Solana CLI and Build Tools
+      - name: Install Solana from GitHub Releases
         run: |
-          # 为 curl 添加重试逻辑，以应对临时的网络故障
-          sh -c "$(curl --retry 5 --retry-delay 5 -sSfL https://release.solana.com/stable/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          solana-install init $(solana-version --version | awk '{print $2}')
+          SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+          if [ "$SOLANA_VERSION" = "stable" ] || [ "$SOLANA_VERSION" = "latest" ]; then
+            SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/${SOLANA_VERSION}/download/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+          fi
+          
+          echo "Downloading Solana from: $SOLANA_RELEASE_URL"
+          wget $SOLANA_RELEASE_URL
+          tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          
+          echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
 
       - name: Install Anchor
         run: |
