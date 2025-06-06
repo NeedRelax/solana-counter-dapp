@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # 使用最新的 v4 版本
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -25,20 +25,20 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install Solana
-        uses: solana-labs/setup-solana@v1
-        with:
-          solana-version: 'latest'
-
+      - name: Install Solana CLI
+        # 使用 Solana 官方的安装脚本
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+          # 将 Solana CLI 添加到 GitHub Actions 的路径中
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        
       - name: Install Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
           avm install latest
           avm use latest
-
-      - name: Add Anchor to PATH
-        # 这是关键一步，avm 安装的 anchor 不在默认路径中
-        run: echo "$HOME/.avm/bin" >> $GITHUB_PATH
+          # 将 Anchor (avm) 添加到路径
+          echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
       - name: Install Node.js dependencies
         run: npm install
@@ -67,19 +67,17 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install Solana
-        uses: solana-labs/setup-solana@v1
-        with:
-          solana-version: 'latest'
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Install Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
           avm install latest
           avm use latest
-
-      - name: Add Anchor to PATH
-        run: echo "$HOME/.avm/bin" >> $GITHUB_PATH
+          echo "$HOME/.avm/bin" >> $GITHUB_PATH
         
       - name: Set up Devnet wallet
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
