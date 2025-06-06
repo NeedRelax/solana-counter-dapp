@@ -12,8 +12,8 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     env:
-      # 关键修复：升级 Solana 版本以匹配你的项目依赖 (solana-program-2.2.1)
-      SOLANA_VERSION: "2.0.1" # 使用一个较新的稳定版，兼容 2.x SDK
+      # 我们将让官方脚本去处理版本，但可以留一个参考
+      # SOLANA_VERSION_REF: "2.0.1"
 
     steps:
       - name: Checkout code
@@ -27,20 +27,19 @@ jobs:
       - name: Install latest nightly Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          # 关键修复：必须使用最新的 nightly 来编译新版 Anchor/Solana
           toolchain: nightly
 
-      - name: Install Solana from GitHub Releases
+      - name: Install Solana using official robust script
+        # 终极修复：回归到最受支持的官方安装脚本，并添加重试逻辑
         run: |
-          SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
-          wget $SOLANA_RELEASE_URL
-          tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
-          echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
-        
-      - name: Install Anchor
+          sh -c "$(curl --retry 5 --retry-delay 5 -sSfL https://release.solana.com/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          # 确保安装了构建工具
+          solana-install init $(solana-version --version | awk '{print $2}')
+
+      - name: Install latest Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
-          # 关键修复：安装最新版 Anchor 以匹配你的项目依赖 (anchor-lang-0.31.1)
           avm install latest
           avm use latest
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
@@ -55,12 +54,9 @@ jobs:
         run: npm install
 
       - name: Regenerate Cargo.lock to match CI environment
-        # 终极修复：删除本地提交的 lock 文件，并强制 CI 重新生成一个兼容的。
         working-directory: ./anchor
         run: |
-          echo "Removing potentially incompatible Cargo.lock from local environment"
           rm -f Cargo.lock
-          echo "Generating a new, CI-compatible lock file from Cargo.toml"
           cargo generate-lockfile
       
       - name: Build Anchor program
@@ -71,16 +67,12 @@ jobs:
         run: anchor test
         working-directory: ./anchor
 
-  # deploy-to-devnet job 也需要做同样的修改
   deploy-to-devnet:
     runs-on: ubuntu-latest
     needs: build-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    env:
-      SOLANA_VERSION: "2.0.1"
     steps:
-      # 在部署任务中也执行完全相同的环境设置和修复步骤
-      # (checkout, node, rust, solana, anchor, regenerate lock file...)
+      # (checkout, node, rust)
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Setup Node.js
@@ -91,13 +83,14 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-      - name: Install Solana from GitHub Releases
+
+      - name: Install Solana using official robust script
         run: |
-          SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
-          wget $SOLANA_RELEASE_URL
-          tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
-          echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
-      - name: Install Anchor
+          sh -c "$(curl --retry 5 --retry-delay 5 -sSfL https://release.solana.com/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          solana-install init $(solana-version --version | awk '{print $2}')
+
+      - name: Install latest Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
           avm install latest
