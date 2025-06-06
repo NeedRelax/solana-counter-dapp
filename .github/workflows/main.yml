@@ -1,70 +1,85 @@
-name: Build, Test and Deploy
+name: Build and Test
 
 on:
   push:
-    branches: [main]
+    branches: ["main"]
   pull_request:
-    branches: [main]
+    branches: ["main"]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
-  backend-anchor:
-    name: Anchor Build & Test
+  build-and-test:
+    name: Build and Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: anchor
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
 
-      - name: Install Rust
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------
+      # Step 1: Set up Rust, Solana, and Anchor environment
+      # --------------------------------------------------
+      - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly
-          components: rustfmt, clippy
+          toolchain: stable
 
-      - name: Install Solana CLI & SBF Toolchain
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.17.20/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          rustup target add bpfel-unknown-unknown
-          cargo install --git https://github.com/solana-labs/solana --bin cargo-build-sbf
+      - name: Set up Solana
+        uses: anza-xyz/setup-solana@v0.4.1
+        with:
+          # Pin a specific version for reproducible builds
+          version: '1.18.17'
 
       - name: Install Anchor CLI
-        run: cargo install --git https://github.com/coral-xyz/anchor anchor-cli --locked
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor anchor-cli --locked --force
 
-      - name: Build Anchor Program
-        run: anchor build
-
-      - name: Run Anchor Tests
-        run: anchor test
-
-  frontend-nextjs:
-    name: Next.js Frontend
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: .
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Cache Anchor build artifacts
+        uses: actions/cache@v4
         with:
-          node-version: '18'
+          path: |
+            ./anchor/target
+            ~/.cargo/git
+            ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-anchor-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-anchor-
 
-      - name: Install dependencies
-        run: npm install
+      # --------------------------------------------------
+      # Step 2: Build and Test Anchor Program
+      # --------------------------------------------------
+      - name: Build Anchor program
+        run: anchor build
+        working-directory: ./anchor
 
-      - name: Run ESLint
-        run: npx eslint . --max-warnings=0
+      - name: Test Anchor program
+        run: anchor test
+        working-directory: ./anchor
 
-      - name: Run Tests (optional)
-        run: npm run test || echo "Tests skipped or not defined"
+      # --------------------------------------------------
+      # Step 3: Set up Node.js environment
+      # --------------------------------------------------
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Use a recent LTS version
+          node-version: '20.x'
+          # Use npm cache provided by setup-node
+          cache: 'npm'
 
-      - name: Build Next.js App
+      # --------------------------------------------------
+      # Step 4: Build and Test Frontend
+      # --------------------------------------------------
+      - name: Install Node.js dependencies
+        # 'npm ci' is recommended for CI for faster, more reliable installs
+        run: npm ci
+
+      - name: Lint frontend code
+        run: npm run lint
+
+      - name: Check code formatting
+        run: npm run format:check
+
+      - name: Build frontend
         run: npm run build
-
-      - name: Export static (if using static export)
-        run: npm run export || echo "Export skipped"
