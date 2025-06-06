@@ -12,6 +12,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     env:
+      # 固定 Solana 版本以保证 CI 的稳定性
       SOLANA_VERSION: "1.18.15"
 
     steps:
@@ -23,11 +24,11 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Rust toolchain
+      - name: Install latest nightly Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          # 策略1：指定一个具体的、较新的 nightly 版本
-          toolchain: nightly-2024-05-01 
+          # 使用最新的 nightly 工具链，以确保兼容最新的 Cargo.lock 格式和 Rust 语言特性
+          toolchain: nightly
 
       - name: Install Solana from GitHub Releases
         run: |
@@ -39,6 +40,7 @@ jobs:
       - name: Install Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
+          # 固定 Anchor 版本以匹配 Solana 版本并保证稳定性
           avm install 0.29.0
           avm use 0.29.0
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
@@ -50,24 +52,19 @@ jobs:
           rustc --version
 
       - name: Install Node.js dependencies
+        # 在项目根目录运行，因为 package.json 在这里
         run: npm install
 
-      - name: Regenerate Cargo.lock file
-        # 策略2：删除旧的 lock 文件并让 Cargo 重新生成一个兼容的
-        working-directory: ./anchor
-        run: |
-          echo "Removing potentially incompatible Cargo.lock"
-          rm -f Cargo.lock
-          echo "Generating a new lock file based on CI's toolchain"
-          cargo generate-lockfile
-
       - name: Build Anchor program
+        # 在 'anchor' 子目录中运行，并且相信最新的 nightly 工具链能处理现有的 Cargo.lock
         run: anchor build
         working-directory: ./anchor
 
       - name: Run Anchor tests
+        # 在 'anchor' 子目录中运行
         run: anchor test
         working-directory: ./anchor
+
   deploy-to-devnet:
     runs-on: ubuntu-latest
     needs: build-and-test
@@ -78,16 +75,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Install Rust toolchain
+
+      - name: Install latest nightly Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          # 关键修复：使用 nightly 版本的 Rust 工具链
           toolchain: nightly
-
 
       - name: Install Solana from GitHub Releases
         run: |
@@ -107,6 +104,6 @@ jobs:
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
 
       - name: Deploy to Devnet
-        # 关键修复：在 'anchor' 子目录中运行
+        # 在 'anchor' 子目录中运行
         run: anchor deploy
         working-directory: ./anchor
