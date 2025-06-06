@@ -11,6 +11,10 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      # 终极修复：硬编码一个在 GitHub Releases 上确认存在的、带有完整发布包的版本
+      SOLANA_VERSION: "1.18.19"
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -25,14 +29,14 @@ jobs:
         with:
           toolchain: nightly
 
-      - name: Install latest STABLE Solana CLI and Build Tools
+      - name: Install Solana from GitHub Releases (Reliable Source)
+        # 我们从 GitHub 直接下载，绕过不稳定的 release.solana.com
         run: |
-          # 回归官方安装脚本，并加入重试机制
-          sh -c "$(curl --retry 5 --retry-delay 5 -sSfL https://release.solana.com/stable/install)"
-          # 将 Solana CLI 添加到路径
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          # 确保所有构建工具都被安装
-          solana-install init $(solana-version --version | awk '{print $2}')
+          SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+          echo "Downloading Solana from confirmed URL: $SOLANA_RELEASE_URL"
+          wget $SOLANA_RELEASE_URL
+          tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
         
       - name: Install latest Anchor
         run: |
@@ -68,7 +72,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    env:
+      SOLANA_VERSION: "1.18.19" # 确保版本一致
     steps:
+      # (此处省略 checkout, node, rust, solana, anchor, regenerate 的重复代码，请确保它们和上面 build-and-test 中的一致)
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Setup Node.js
@@ -79,11 +86,12 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
-      - name: Install latest STABLE Solana CLI and Build Tools
+      - name: Install Solana from GitHub Releases (Reliable Source)
         run: |
-          sh -c "$(curl --retry 5 --retry-delay 5 -sSfL https://release.solana.com/stable/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          solana-install init $(solana-version --version | awk '{print $2}')
+          SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+          wget $SOLANA_RELEASE_URL
+          tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
       - name: Install latest Anchor
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked
@@ -96,7 +104,7 @@ jobs:
         run: |
           rm -f Cargo.lock
           cargo generate-lockfile
-          
+
       - name: Set up Devnet wallet
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
       
