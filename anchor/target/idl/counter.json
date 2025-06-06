@@ -1,5 +1,5 @@
 {
-  "address": "FqzkXZdwYjurnUKetJCAvaUw5WAqbwzU6gZEwydeEfqS",
+  "address": "WGh22MoY3HGgDmgHFonx7mYTvu7j6yafbRYA4fDVBKE",
   "metadata": {
     "name": "counter",
     "version": "0.1.0",
@@ -9,53 +9,106 @@
   "instructions": [
     {
       "name": "close",
-      "discriminator": [98, 165, 201, 177, 108, 65, 206, 96],
+      "discriminator": [
+        98,
+        165,
+        201,
+        177,
+        108,
+        65,
+        206,
+        96
+      ],
       "accounts": [
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
         {
           "name": "counter",
           "writable": true
+        },
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "counter"
+          ]
         }
       ],
       "args": []
     },
     {
       "name": "decrement",
-      "discriminator": [106, 227, 168, 59, 248, 27, 150, 101],
+      "discriminator": [
+        106,
+        227,
+        168,
+        59,
+        248,
+        27,
+        150,
+        101
+      ],
       "accounts": [
         {
           "name": "counter",
           "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "counter"
+          ]
         }
       ],
       "args": []
     },
     {
       "name": "increment",
-      "discriminator": [11, 18, 104, 9, 104, 174, 59, 33],
+      "discriminator": [
+        11,
+        18,
+        104,
+        9,
+        104,
+        174,
+        59,
+        33
+      ],
       "accounts": [
         {
           "name": "counter",
           "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "counter"
+          ]
         }
       ],
       "args": []
     },
     {
       "name": "initialize",
-      "discriminator": [175, 175, 109, 31, 13, 152, 155, 237],
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
       "accounts": [
         {
-          "name": "payer",
+          "name": "counter",
           "writable": true,
           "signer": true
         },
         {
-          "name": "counter",
+          "name": "authority",
           "writable": true,
           "signer": true
         },
@@ -68,36 +121,77 @@
     },
     {
       "name": "set",
-      "discriminator": [198, 51, 53, 241, 116, 29, 126, 194],
+      "discriminator": [
+        198,
+        51,
+        53,
+        241,
+        116,
+        29,
+        126,
+        194
+      ],
       "accounts": [
         {
           "name": "counter",
           "writable": true
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "counter"
+          ]
         }
       ],
       "args": [
         {
           "name": "value",
-          "type": "u8"
+          "type": "u64"
         }
       ]
     }
   ],
   "accounts": [
     {
-      "name": "Counter",
-      "discriminator": [255, 176, 4, 245, 188, 253, 124, 25]
+      "name": "CounterAccount",
+      "discriminator": [
+        164,
+        8,
+        153,
+        71,
+        8,
+        44,
+        93,
+        22
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "You are not authorized to perform this action."
+    },
+    {
+      "code": 6001,
+      "name": "CannotDecrementZero",
+      "msg": "Cannot decrement counter when it is already zero."
     }
   ],
   "types": [
     {
-      "name": "Counter",
+      "name": "CounterAccount",
       "type": {
         "kind": "struct",
         "fields": [
           {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
             "name": "count",
-            "type": "u8"
+            "type": "u64"
           }
         ]
       }

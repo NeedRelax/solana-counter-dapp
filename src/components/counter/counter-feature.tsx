@@ -1,3 +1,5 @@
+// src/app/counter/counter-feature.tsx
+
 'use client'
 
 import { useWallet } from '@solana/wallet-adapter-react'
@@ -17,7 +19,8 @@ export default function CounterFeature() {
       <AppHero
         title="Counter"
         subtitle={
-          'Create a new account by clicking the "Create" button. The state of a account is stored on-chain and can be manipulated by calling the program\'s methods (increment, decrement, set, and close).'
+          // 更新这里的描述
+          'Create a new account by clicking the "Create" button. The state of an account is stored on-chain and can be manipulated by calling the program\'s methods (increment, decrement, set, and close).'
         }
       >
         <p className="mb-6">
