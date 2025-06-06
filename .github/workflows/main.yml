@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # 关键修复：硬编码一个具体的、已知的稳定版本号
-      SOLANA_VERSION: "1.87.0"
+      SOLANA_VERSION: "1.18.15"
 
     steps:
       - name: Checkout code
