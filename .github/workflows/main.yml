@@ -24,7 +24,6 @@ jobs:
           node-version: '20'
 
       - name: Manually Install a very recent nightly Rust toolchain
-        # 终极修复：使用一个确认在 LazyLock 稳定化之后的 nightly 版本
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
@@ -53,8 +52,16 @@ jobs:
 
       - name: Install Node.js dependencies
         run: npm install
+        
+      - name: Remove local Cargo.lock before build
+        # 终极修复：在构建前直接删除不兼容的 lock 文件
+        working-directory: ./anchor
+        run: |
+          echo "Removing potentially incompatible Cargo.lock to force regeneration by anchor build"
+          rm -f Cargo.lock
 
       - name: Build Anchor program
+        # anchor build 会在没有 lock 文件的情况下自动运行 cargo resolve
         run: anchor build
         working-directory: ./anchor
 
@@ -69,6 +76,7 @@ jobs:
     env:
       SOLANA_VERSION: "1.18.17"
     steps:
+      # ... (此处省略重复代码，但请确保 deploy-to-devnet 也包含了手动安装 Rust 和删除 lock 文件的步骤)
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Setup Node.js
@@ -93,8 +101,14 @@ jobs:
           avm install latest
           avm use latest
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
+          
+      - name: Remove local Cargo.lock before deploy
+        working-directory: ./anchor
+        run: rm -f Cargo.lock
+          
       - name: Set up Devnet wallet
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
+      
       - name: Deploy to Devnet
         run: anchor deploy
         working-directory: ./anchor
