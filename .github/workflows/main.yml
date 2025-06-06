@@ -1,5 +1,3 @@
-# 文件路径: .github/workflows/your-workflow.yml
-
 name: Build, Test and Deploy
 
 on:
@@ -10,16 +8,12 @@ on:
     branches:
       - main
 
-# 定义环境变量，方便统一管理
-env:
-  SOLANA_VERSION: "1.18.17"
-  NODE_VERSION: '20'
-  # Anchor 项目的路径
-  ANCHOR_PROJECT_PATH: ./anchor
-
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      SOLANA_VERSION: "1.18.17"
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,66 +21,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '20'
 
-      # 优雅地安装 Rust，它会自动读取 anchor/rust-toolchain.toml 文件
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
-        with:
-          # 我们只需要指定 channel，具体版本由 rust-toolchain.toml 决定
-          toolchain: nightly
-          # 为 rust-analyzer/RLS 提供支持，这是一个好习惯
-          components: rust-src
-
-      # --- 缓存步骤 ---
-      - name: Cache Solana
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/solana
-          key: ${{ runner.os }}-solana-${{ env.SOLANA_VERSION }}
-
-      - name: Cache Anchor (AVM)
-        uses: actions/cache@v4
-        with:
-          path: ~/.avm
-          key: ${{ runner.os }}-avm-latest
-
-      - name: Cache Node modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-
-      - name: Cache Cargo dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            ${{ env.ANCHOR_PROJECT_PATH }}/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      # --- 安装工具链 ---
-      - name: Install Solana
+      - name: Manually Install a very recent nightly Rust toolchain
+        # 终极修复：使用一个确认在 LazyLock 稳定化之后的 nightly 版本
         run: |
-          if [ ! -d "$HOME/.cache/solana/v${SOLANA_VERSION}" ]; then
-            sh -c "$(curl -sSfL https://release.solana.com/v${SOLANA_VERSION}/install)"
-            # 将安装目录移动到缓存位置
-            mv ~/.local/share/solana ~/.cache/solana
-          fi
-          # 将缓存的 Solana CLI 添加到 PATH
-          echo "$HOME/.cache/solana/install/active_release/bin" >> $GITHUB_PATH
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustup install nightly-2024-06-10
+          rustup default nightly-2024-06-10
+
+      - name: Install Solana from a Confirmed GitHub Release
+        run: |
+          SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+          wget $SOLANA_RELEASE_URL
+          tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
         
-      - name: Install Anchor
+      - name: Install latest Anchor
         run: |
-          # 仅在 AVM 未缓存时安装
-          if ! command -v avm &> /dev/null; then
-            cargo install --git https://github.com/coral-xyz/anchor avm --locked
-            avm install latest
-            avm use latest
-          fi
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked
+          avm install latest
+          avm use latest
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
 
       - name: Verify Tools Installation
@@ -95,87 +51,50 @@ jobs:
           anchor --version
           rustc --version
 
-      # --- 构建和测试 ---
       - name: Install Node.js dependencies
         run: npm install
 
       - name: Build Anchor program
-        run: anchor build
-        working-directory: ${{ env.ANCHOR_PROJECT_PATH }}
+        run: anchor build -- -- -Znext-lockfile
+        working-directory: ./anchor
 
       - name: Run Anchor tests
-        run: anchor test
-        working-directory: ${{ env.ANCHOR_PROJECT_PATH }}
-
-      # --- 上传构建产物 ---
-      - name: Upload Anchor build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: anchor-build-artifacts
-          path: |
-            ${{ env.ANCHOR_PROJECT_PATH }}/target/deploy/
-            ${{ env.ANCHOR_PROJECT_PATH }}/target/idl/
+        run: anchor test -- -- -Znext-lockfile
+        working-directory: ./anchor
 
   deploy-to-devnet:
     runs-on: ubuntu-latest
-    # 需要 build-and-test 任务成功完成
     needs: build-and-test
-    # 仅在推送代码到 main 分支时执行
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    env:
+      SOLANA_VERSION: "1.18.17"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      # 部署也需要 Solana 和 Anchor CLI，所以需要安装它们
-      # 但由于有缓存，这一步会非常快
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@nightly
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          toolchain: nightly
-      
-      - name: Cache Solana
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/solana
-          key: ${{ runner.os }}-solana-${{ env.SOLANA_VERSION }}
-          
-      - name: Cache Anchor (AVM)
-        uses: actions/cache@v4
-        with:
-          path: ~/.avm
-          key: ${{ runner.os }}-avm-latest
-
-      - name: Install Solana
+          node-version: '20'
+      - name: Manually Install a very recent nightly Rust toolchain
         run: |
-          if [ ! -d "$HOME/.cache/solana/v${SOLANA_VERSION}" ]; then
-            sh -c "$(curl -sSfL https://release.solana.com/v${SOLANA_VERSION}/install)"
-            mv ~/.local/share/solana ~/.cache/solana
-          fi
-          echo "$HOME/.cache/solana/install/active_release/bin" >> $GITHUB_PATH
-          
-      - name: Install Anchor
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          rustup install nightly-2024-06-10
+          rustup default nightly-2024-06-10
+      - name: Install Solana from a Confirmed GitHub Release
         run: |
-          if ! command -v avm &> /dev/null; then
-            cargo install --git https://github.com/coral-xyz/anchor avm --locked
-            avm install latest
-            avm use latest
-          fi
+          SOLANA_RELEASE_URL="https://github.com/solana-labs/solana/releases/download/v${SOLANA_VERSION}/solana-release-x86_64-unknown-linux-gnu.tar.bz2"
+          wget $SOLANA_RELEASE_URL
+          tar -jxvf solana-release-x86_64-unknown-linux-gnu.tar.bz2
+          echo "$(pwd)/solana-release/bin" >> $GITHUB_PATH
+      - name: Install latest Anchor
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked
+          avm install latest
+          avm use latest
           echo "$HOME/.avm/bin" >> $GITHUB_PATH
-
-      # 下载之前构建好的产物
-      - name: Download Anchor build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: anchor-build-artifacts
-          # 将产物下载到正确的位置，以便 anchor deploy 命令可以找到它们
-          path: ${{ env.ANCHOR_PROJECT_PATH }}/target/
-
-      - name: Verify downloaded artifacts
-        run: ls -R ${{ env.ANCHOR_PROJECT_PATH }}/target/
-
       - name: Set up Devnet wallet
         run: echo "${{ secrets.SOLANA_KEYPAIR_SECRET }}" > ~/.config/solana/id.json
-      
       - name: Deploy to Devnet
         run: anchor deploy
-        working-directory: ${{ env.ANCHOR_PROJECT_PATH }}
+        working-directory: ./anchor
