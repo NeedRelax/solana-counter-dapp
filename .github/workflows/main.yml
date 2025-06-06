@@ -1,83 +1,69 @@
-name: Build and Test
+name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: [ main ]
   pull_request:
-    branches: ["main"]
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+    branches: [ main ]
+  workflow_dispatch: # 允许手动触发
 
 jobs:
-  build-and-test:
-    name: Build and Test
+  build_and_test:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      # --------------------------------------------------
-      # Step 1: Set up Rust, Solana, and Anchor environment
-      # --------------------------------------------------
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20' # 你可以根据项目需求调整 Node.js 版本
+        cache: 'npm'
 
-      - name: Install Solana CLI
-        # --- FIX: Use the official install script, this is the most robust method ---
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.18.17/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-          solana --version
+    - name: Install npm dependencies
+      run: npm ci # 使用 ci 更适合 CI 环境，如果不行可以换回 npm install
 
-      - name: Install Anchor CLI
-        run: |
-          cargo install --git https://github.com/coral-xyz/anchor anchor-cli --locked --force
+    - name: Setup Rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        components: rustfmt, clippy
+        override: true
 
-      - name: Cache Anchor build artifacts
-        uses: actions/cache@v4
-        with:
-          path: |
-            ./anchor/target
-            ~/.cargo/git
-            ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-anchor-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-anchor-
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          anchor/target/ # 缓存 Anchor 项目的构建输出
+        key: ${{ runner.os }}-cargo-${{ hashFiles('anchor/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
 
-      # --------------------------------------------------
-      # Step 2: Build and Test Anchor Program
-      # --------------------------------------------------
-      - name: Build Anchor program
-        run: anchor build
-        working-directory: ./anchor
+    - name: Install Solana CLI
+      run: |
+        sh -c "$(curl -sSfL https://release.solana.com/v1.18.18/install)" # 可以选择一个具体的稳定版本
+        echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        solana --version
 
-      - name: Test Anchor program
-        run: anchor test
-        working-directory: ./anchor
+    - name: Install Anchor Version Manager (AVM) and Anchor CLI
+      run: |
+        cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+        avm install 0.31.1 # 与你的 anchor-lang 版本匹配
+        avm use 0.31.1
+        echo "$HOME/.avm/bin" >> $GITHUB_PATH
+        anchor --version
 
-      # --------------------------------------------------
-      # Step 3: Set up Node.js environment
-      # --------------------------------------------------
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-          cache: 'npm'
+    - name: Build Anchor program
+      run: npm run anchor-build
 
-      # --------------------------------------------------
-      # Step 4: Build and Test Frontend
-      # --------------------------------------------------
-      - name: Install Node.js dependencies
-        run: npm ci
+    - name: Test Anchor program
+      # Anchor test 可能会启动本地验证器，确保端口没有冲突
+      # 如果测试需要特定的账户或程序部署，你可能需要在这里添加额外的步骤
+      run: npm run anchor-test
 
-      - name: Lint frontend code
-        run: npm run lint
-
-      - name: Check code formatting
-        run: npm run format:check
-
-      - name: Build frontend
-        run: npm run build
+    - name: Run Frontend CI (Build, Lint, Format Check)
+      run: npm run ci
